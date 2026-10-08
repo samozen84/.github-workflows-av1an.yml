@@ -12,29 +12,31 @@ jobs:
     runs-on: windows-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-      # Forces Rust to statically link the C runtime library
+      # Forces Rust to link the C runtime library statically
       RUSTFLAGS: "-C target-feature=+crt-static"
 
     steps:
-      # 1. Pull the official upstream Av1an source repository 
+      # 1. Pull the official upstream Av1an source repository
       - name: Checkout Av1an Source
         uses: actions/checkout@v4
         with:
           repository: 'rust-av/Av1an'
           path: 'av1an-source'
 
-      # 2. Install VapourSynth cleanly via Chocolatey package manager
-      - name: Install VapourSynth and Core Tools
+      # 2. Extract portable VapourSynth SDK headers and link libraries cleanly
+      - name: Install VapourSynth Headers
         shell: powershell
         run: |
-          choco install vapoursynth -y --no-progress
+          # Download official R65 portable build
+          Invoke-WebRequest -Uri "https://github.com" -OutFile "vs.7z"
           
-          # Map VapourSynth's system paths dynamically to the GitHub environment variables
-          echo "C:\Program Files\VapourSynth" >> $env:GITHUB_PATH
-          echo "C:\Program Files\VapourSynth\sdk\lib64" >> $env:GITHUB_PATH
+          # Extract with built-in 7-Zip on Windows runner
+          & "C:\Program Files\7-Zip\7z.exe" x vs.7z -o"C:\vapoursynth"
           
-          # Explicitly tell Cargo where to find vapoursynth.lib for linking
-          echo "VAPOURSYNTH_LIBRARIES=C:\Program Files\VapourSynth\sdk\lib64" >> $env:GITHUB_ENV
+          # Force export paths directly to GitHub Action environment states
+          echo "VAPOURSYNTH_LIBRARIES=C:\vapoursynth\sdk\lib64" >> $env:GITHUB_ENV
+          echo "C:\vapoursynth" >> $env:GITHUB_PATH
+          echo "C:\vapoursynth\sdk\lib64" >> $env:GITHUB_PATH
 
       # 3. Setup the Rust toolchain targeting Windows MSVC
       - name: Setup Rust
