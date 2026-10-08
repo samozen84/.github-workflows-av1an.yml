@@ -12,15 +12,15 @@ jobs:
     runs-on: windows-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      # Forces Rust to link the C runtime library (MSVCRT) statically into the binary
       RUSTFLAGS: "-C target-feature=+crt-static"
 
     steps:
-      # 1. Pull the superyu1337 community fork with HDR splitting logic
-      - name: Checkout Av1an HDR Source
+      # 1. Pull the official main fork tree to ensure stable baseline checks
+      - name: Checkout Av1an Core Source
         uses: actions/checkout@v4
         with:
-          repository: 'superyu1337/Av1an'
-          ref: 'feature/hdr-metadata-handling'
+          repository: 'master-of-zen/Av1an'
           path: 'av1an-source'
 
       # 2. Checkout VapourSynth SDK mapping components
@@ -34,19 +34,19 @@ jobs:
             include
             msvc_project
 
-      # 3. Setup the Rust compiler pipeline
+      # 3. Setup the Rust toolchain targeting Windows MSVC
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
 
-      # 4. Cache Rust Build Dependencies
+      # 4. Cache Rust Build Dependencies to speed up future workflow runs
       - name: Cache Cargo Dependencies
         uses: swatinem/rust-cache@v2
         with:
           workspaces: 'av1an-source -> target'
 
-      # 5. Compile the custom Av1an binary
+      # 5. Compile the static Av1an binary
       - name: Build Av1an Binary
         shell: powershell
         env:
@@ -63,6 +63,7 @@ jobs:
           Invoke-WebRequest -Uri "https://mkvtoolnix.download" -OutFile "mkvtoolnix.7z"
           & "C:\Program Files\7-Zip\7z.exe" e mkvtoolnix.7z "mkvtoolnix\mkvmerge.exe" -o"dist"
 
+      # 7. Stage finalized toolkit folder components
       - name: Stage Toolkit Artifacts
         shell: powershell
         run: |
@@ -70,7 +71,7 @@ jobs:
           Copy-Item .\av1an-source\target\release\av1an.exe .\dist\
           Copy-Item .\av1an-source\README.md .\dist\
 
-      # 7. Upload the finalized dynamic HDR bundle
+      # 8. Upload the working HDR-ready tool bundle
       - name: Upload Windows App Binary
         uses: actions/upload-artifact@v4
         with:
