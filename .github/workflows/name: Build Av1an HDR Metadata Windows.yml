@@ -1,0 +1,79 @@
+name: Build Av1an HDR Metadata Windows
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      RUSTFLAGS: "-C target-feature=+crt-static"
+
+    steps:
+      # 1. Pull the superyu1337 community fork with HDR splitting logic
+      - name: Checkout Av1an HDR Source
+        uses: actions/checkout@v4
+        with:
+          repository: 'superyu1337/Av1an'
+          ref: 'feature/hdr-metadata-handling'
+          path: 'av1an-source'
+
+      # 2. Checkout VapourSynth SDK mapping components
+      - name: Checkout VapourSynth Build SDK Dependencies
+        uses: actions/checkout@v4
+        with:
+          repository: 'vapoursynth/vapoursynth'
+          path: 'vs-sdk'
+          ref: 'R65'
+          sparse-checkout: |
+            include
+            msvc_project
+
+      # 3. Setup the Rust compiler pipeline
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      # 4. Cache Rust Build Dependencies
+      - name: Cache Cargo Dependencies
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: 'av1an-source -> target'
+
+      # 5. Compile the custom Av1an binary
+      - name: Build Av1an Binary
+        shell: powershell
+        env:
+          VAPOURSYNTH_INCLUDE_DIR: ${{ github.workspace }}\vs-sdk\include
+          VAPOURSYNTH_LIBRARIES: ${{ github.workspace }}\vs-sdk\msvc_project
+        run: |
+          cd av1an-source
+          cargo build --release --bin av1an
+
+      # 6. Gather compiled utilities and mkvmerge link pieces
+      - name: Fetch mkvmerge portable bin
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://mkvtoolnix.download" -OutFile "mkvtoolnix.7z"
+          & "C:\Program Files\7-Zip\7z.exe" e mkvtoolnix.7z "mkvtoolnix\mkvmerge.exe" -o"dist"
+
+      - name: Stage Toolkit Artifacts
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path .\dist
+          Copy-Item .\av1an-source\target\release\av1an.exe .\dist\
+          Copy-Item .\av1an-source\README.md .\dist\
+
+      # 7. Upload the finalized dynamic HDR bundle
+      - name: Upload Windows App Binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: Av1an_HDR_Metadata_Windows_x64
+          path: dist/
+          if-no-files-found: error
