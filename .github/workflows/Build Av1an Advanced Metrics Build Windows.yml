@@ -1,4 +1,4 @@
-name: Build Av1an Advanced Metrics Build Windows
+name: Build Av1an Advanced Metrics Windows
 
 on:
   push:
@@ -12,14 +12,15 @@ jobs:
     runs-on: windows-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      # Forces Rust to link the C runtime library (MSVCRT) statically into the binary
       RUSTFLAGS: "-C target-feature=+crt-static"
 
     steps:
-      # 1. Pull the masterofnone community fork tracking native advanced metrics
+      # 1. Pull the correct, active master-of-zen Advanced Metrics fork codebase cleanly
       - name: Checkout Av1an Metrics Source
         uses: actions/checkout@v4
         with:
-          repository: 'masterofnone/Av1an'
+          repository: 'master-of-zen/Av1an'
           path: 'av1an-source'
 
       # 2. Checkout VapourSynth SDK mapping components
@@ -33,19 +34,19 @@ jobs:
             include
             msvc_project
 
-      # 3. Setup the Rust compiler pipeline
+      # 3. Setup the Rust toolchain targeting Windows MSVC
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
 
-      # 4. Cache Rust Build Dependencies
+      # 4. Cache Rust Build Dependencies to speed up future workflow runs
       - name: Cache Cargo Dependencies
         uses: swatinem/rust-cache@v2
         with:
           workspaces: 'av1an-source -> target'
 
-      # 5. Compile the custom Av1an binary
+      # 5. Compile the custom metric-enabled Av1an binary
       - name: Build Av1an Binary
         shell: powershell
         env:
@@ -55,24 +56,27 @@ jobs:
           cd av1an-source
           cargo build --release --bin av1an
 
-      # 6. Gather compiled utilities and mkvmerge link pieces
+      # 6. Create the distribution folder and gather mkvmerge portable bin
       - name: Fetch mkvmerge portable bin
         shell: powershell
         run: |
+          # Create output directory first to prevent 7z extraction failure
+          New-Item -ItemType Directory -Force -Path .\dist
+          
           Invoke-WebRequest -Uri "https://mkvtoolnix.download" -OutFile "mkvtoolnix.7z"
           & "C:\Program Files\7-Zip\7z.exe" e mkvtoolnix.7z "mkvtoolnix\mkvmerge.exe" -o"dist"
 
+      # 7. Stage finalized toolkit folder components
       - name: Stage Toolkit Artifacts
         shell: powershell
         run: |
-          New-Item -ItemType Directory -Force -Path .\dist
           Copy-Item .\av1an-source\target\release\av1an.exe .\dist\
           Copy-Item .\av1an-source\README.md .\dist\
 
-      # 7. Upload the finalized dynamic HDR bundle
+      # 8. Upload the working advanced bundle
       - name: Upload Windows App Binary
         uses: actions/upload-artifact@v4
         with:
-          name: Av1an_HDR_Metadata_Windows_x64
+          name: Av1an_Advanced_Metrics_Windows_x64
           path: dist/
           if-no-files-found: error
