@@ -60,11 +60,13 @@ jobs:
       - name: Fetch mkvmerge portable bin
         shell: powershell
         run: |
-          # Create output directory first to prevent 7z extraction failure
+          # Create output directory first to prevent extraction failure
           New-Item -ItemType Directory -Force -Path .\dist
           
           Invoke-WebRequest -Uri "https://mkvtoolnix.download" -OutFile "mkvtoolnix.7z"
-          & "C:\Program Files\7-Zip\7z.exe" e mkvtoolnix.7z "mkvtoolnix\mkvmerge.exe" -o"dist"
+          
+          # Fix: Uses -r to recursively find mkvmerge.exe wherever it is hidden inside the zip
+          & "C:\Program Files\7-Zip\7z.exe" e mkvtoolnix.7z mkvmerge.exe -odist -r
 
       # 7. Stage finalized toolkit folder components
       - name: Stage Toolkit Artifacts
