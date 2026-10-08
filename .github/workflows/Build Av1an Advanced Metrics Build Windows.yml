@@ -56,22 +56,18 @@ jobs:
           cd av1an-source
           cargo build --release --bin av1an
 
-      # 6. Extract MKVToolNix completely and extract mkvmerge safely
+      # 6. Install mkvtoolnix via Chocolatey and cleanly copy mkvmerge out
       - name: Fetch mkvmerge portable bin
         shell: powershell
         run: |
-          # Create workspace and temp directory tracks
+          # Create our staging directory
           New-Item -ItemType Directory -Force -Path .\dist
-          New-Item -ItemType Directory -Force -Path .\mkv-temp
           
-          # Download portable package
-          Invoke-WebRequest -Uri "https://mkvtoolnix.download" -OutFile "mkvtoolnix.7z"
+          # Install mkvtoolnix via chocolatey package manager package mirror
+          choco install mkvtoolnix -y --no-progress
           
-          # Extract everything to temp directory to avoid extraction path conflicts
-          & "C:\Program Files\7-Zip\7z.exe" x mkvtoolnix.7z -o"mkv-temp" -y
-          
-          # Use native PowerShell tracking to find the executable wherever it resides
-          Get-ChildItem -Path .\mkv-temp -Filter mkvmerge.exe -Recurse | Copy-Item -Destination .\dist\
+          # Safely copy mkvmerge out of its standard 64-bit installation path directly into dist
+          Copy-Item "C:\Program Files\MKVToolNix\mkvmerge.exe" .\dist\
 
       # 7. Stage finalized toolkit folder components
       - name: Stage Toolkit Artifacts
