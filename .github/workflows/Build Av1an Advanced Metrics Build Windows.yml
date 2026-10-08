@@ -56,17 +56,22 @@ jobs:
           cd av1an-source
           cargo build --release --bin av1an
 
-      # 6. Create the distribution folder and gather mkvmerge portable bin
+      # 6. Extract MKVToolNix completely and extract mkvmerge safely
       - name: Fetch mkvmerge portable bin
         shell: powershell
         run: |
-          # Create output directory first to prevent extraction failure
+          # Create workspace and temp directory tracks
           New-Item -ItemType Directory -Force -Path .\dist
+          New-Item -ItemType Directory -Force -Path .\mkv-temp
           
+          # Download portable package
           Invoke-WebRequest -Uri "https://mkvtoolnix.download" -OutFile "mkvtoolnix.7z"
           
-          # Fix: Uses -r to recursively find mkvmerge.exe wherever it is hidden inside the zip
-          & "C:\Program Files\7-Zip\7z.exe" e mkvtoolnix.7z mkvmerge.exe -odist -r
+          # Extract everything to temp directory to avoid extraction path conflicts
+          & "C:\Program Files\7-Zip\7z.exe" x mkvtoolnix.7z -o"mkv-temp" -y
+          
+          # Use native PowerShell tracking to find the executable wherever it resides
+          Get-ChildItem -Path .\mkv-temp -Filter mkvmerge.exe -Recurse | Copy-Item -Destination .\dist\
 
       # 7. Stage finalized toolkit folder components
       - name: Stage Toolkit Artifacts
