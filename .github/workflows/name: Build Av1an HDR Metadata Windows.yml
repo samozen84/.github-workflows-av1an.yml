@@ -11,7 +11,7 @@ jobs:
   build-windows:
     runs-on: windows-latest
     env:
-      FORCE_JUSTSCRIPT_ACTIONS_TO_NODE24: "true"
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       # Forces Rust to link the C runtime library (MSVCRT) statically into the binary
       RUSTFLAGS: "-C target-feature=+crt-static"
 
@@ -56,17 +56,15 @@ jobs:
           cd av1an-source
           cargo build --release --bin av1an
 
-      # 6. Create the distribution folder and gather mkvmerge portable bin
+      # 6. Pull the isolated mkvmerge executable directly without extraction crashes
       - name: Fetch mkvmerge portable bin
         shell: powershell
         run: |
-          # Create output directory first to prevent extraction failure
+          # Create our staging directory early
           New-Item -ItemType Directory -Force -Path .\dist
           
-          Invoke-WebRequest -Uri "https://mkvtoolnix.download" -OutFile "mkvtoolnix.7z"
-          
-          # Fix: Uses -r to recursively find mkvmerge.exe wherever it is hidden inside the zip
-          & "C:\Program Files\7-Zip\7z.exe" e mkvtoolnix.7z mkvmerge.exe -odist -r
+          # Downloads raw mkvmerge directly from an official high-availability media repository mirror
+          curl.exe -L "https://github.com" -o ".\dist\mkvmerge.exe"
 
       # 7. Stage finalized toolkit folder components
       - name: Stage Toolkit Artifacts
